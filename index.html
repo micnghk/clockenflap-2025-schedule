@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/600px-Octicons-mark-github.svg.png"> <title>Clockenflap 2025</title>
+    <style>
+        :root {
+            --col-width: 140px;
+            --time-col-width: 50px;
+            --row-height: 4px;
+            --header-height: 50px;
+            
+            /* Light Mode Defaults */
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-main: #222222;
+            --text-muted: #666666;
+            --border-color: #eeeeee;
+            --header-bg: #ffffff;
+            --tab-bg: #333333;
+            --tab-text: #ffffff;
+            --modal-bg: #ffffff;
+
+            /* Stage Colors */
+            --color-harbourflap: #6ec6ff;
+            --color-orbit: #ffbad2;
+            --color-park: #4db6ac;
+            --color-robot: #ffd54f;
+            --color-silent: #cfd8dc;
+            --color-minimax: #80cbc4;
+        }
+
+        /* Dark Mode Overrides */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #121212;
+                --card-bg: #1e1e1e;
+                --text-main: #e0e0e0;
+                --text-muted: #aaaaaa;
+                --border-color: #333333;
+                --header-bg: #1e1e1e;
+                --tab-bg: #1a1a1a;
+                --modal-bg: #2c2c2c;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            /* Prevent pull-to-refresh on mobile to feel more app-like */
+            overscroll-behavior: none;
+        }
+
+        /* Day Tabs */
+        .tabs {
+            display: flex;
+            background: var(--tab-bg);
+            color: var(--tab-text);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 100;
+            padding-top: env(safe-area-inset-top); /* Handle iPhone Notch */
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 15px 0;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .tab.active {
+            background: #ec603d !important;
+            color: #000000 !important;
+            opacity: 1;
+            border-bottom: none;
+        }
+
+        /* Main Schedule Container */
+        .schedule-viewport {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            background: var(--bg-color);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: var(--time-col-width) repeat(6, var(--col-width));
+            position: relative;
+            min-width: fit-content;
+            padding-bottom: 80px; /* Extra padding for controls */
+            background: var(--card-bg);
+            transition: 0.3s;
+        }
+
+        /* Sticky Headers */
+        .stage-header {
+            position: sticky;
+            top: 0;
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            background: var(--header-bg);
+            border-bottom: 2px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            z-index: 20;
+            text-align: center;
+            padding: 0 5px;
+            color: var(--text-main);
+        }
+        
+        .time-header-corner {
+            position: sticky;
+            top: 0;
+            left: 0;
+            z-index: 30;
+            background: var(--header-bg);
+            border-bottom: 2px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            width: var(--time-col-width);
+            height: var(--header-height);
+        }
+
+        /* Time Axis */
+        .time-slot {
+            position: sticky;
+            left: 0;
+            background: var(--header-bg);
+            border-right: 1px solid var(--border-color);
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: start;
+            padding-top: 5px;
+        }
+        .time-slot span {
+            transform: translateY(-50%);
+        }
+
+        .grid-line {
+            grid-column: 2 / -1;
+            border-top: 1px solid var(--border-color);
+            pointer-events: none;
+        }
+
+        /* --- ARTIST BLOCKS & WISHLIST LOGIC --- */
+        .artist-block {
+            margin: 1px 4px;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #222; 
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: opacity 0.3s, transform 0.1s, border 0.3s;
+            z-index: 1;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .artist-block:active {
+            transform: scale(0.98);
+        }
+
+        /* WISHLIST STYLES */
+        .schedule-grid.has-wishlist .artist-block {
+            opacity: 0.3; 
+            filter: grayscale(60%);
+        }
+        .schedule-grid.has-wishlist .artist-block.wishlisted {
+            opacity: 1;
+            filter: none;
+            border: 2px solid #000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 5;
+        }
+        .artist-block.wishlisted::after {
+            content: "❤️";
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
+
+        .artist-time {
+            font-size: 9px;
+            opacity: 0.8;
+            margin-bottom: 2px;
+            font-weight: normal;
+        }
+
+        /* Stage Colors */
+        .stage-Harbourflap { background-color: var(--color-harbourflap); }
+        .stage-Orbit { background-color: var(--color-orbit); }
+        .stage-Park { background-color: var(--color-park); }
+        .stage-Robot { background-color: var(--color-robot); }
+        .stage-Silent { background-color: var(--color-silent); }
+        .stage-Minimax { background-color: var(--color-minimax); }
+
+        /* Current Time Line */
+        #current-time-line {
+            position: absolute;
+            left: var(--time-col-width);
+            right: 0;
+            height: 2px;
+            background: #ff3b30;
+            z-index: 15;
+            pointer-events: none;
+            display: none;
+        }
+        #current-time-line::before {
+            content: "NOW";
+            position: absolute;
+            left: -45px;
+            top: -8px;
+            background: #ff3b30;
+            color: white;
+            font-size: 9px;
+            padding: 2px 4px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        /* Controls */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 200;
+            display: flex;
+            gap: 10px;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .controls button {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-size: 11px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* --- MODAL POPUP --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .modal-box {
+            background: var(--modal-bg);
+            color: var(--text-main);
+            width: 85%;
+            max-width: 320px;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            text-align: center;
+            position: relative;
+            animation: popIn 0.2s ease-out;
+        }
+        @keyframes popIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .modal-info {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 25px;
+        }
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .btn-modal {
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            text-decoration: none;
+            display: block;
+            transition: transform 0.1s;
+        }
+        .btn-modal:active { transform: scale(0.97); }
+        
+        .btn-spotify { background: #1DB954; color: white; }
+        .btn-wishlist { background: #ec603d; color: black; }
+        .btn-wishlist.remove { background: #555; color: white; }
+        
+        .btn-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 5px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchDay('Fri')">DEC 5 (FRI)</div>
+        <div class="tab" onclick="switchDay('Sat')">DEC 6 (SAT)</div>
+        <div class="tab" onclick="switchDay('Sun')">DEC 7 (SUN)</div>
+    </div>
+
+    <div class="schedule-viewport" id="viewport">
+        <div class="schedule-grid" id="schedule-container">
+            </div>
+        <div id="current-time-line"></div>
+    </div>
+
+    <div class="controls">
+        <button onclick="toggleDemoMode()">Toggle "NOW"</button>
+        <button onclick="clearWishlist()">Reset Wishlist</button>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-box">
+            <button class="btn-close" onclick="closeModal()">×</button>
+            <div class="modal-title" id="m-artist">Artist Name</div>
+            <div class="modal-info" id="m-info">Stage • Time</div>
+            
+            <div class="modal-actions">
+                <a href="#" target="_blank" id="btn-spotify" class="btn-modal btn-spotify">
+                    Listen on Spotify 🎵
+                </a>
+                <button id="btn-wishlist" class="btn-modal btn-wishlist" onclick="toggleCurrentWishlist()">
+                    Add to Wishlist ❤️
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- DATA ---
+    const STAGES = [
+        "Harbourflap Stage", "Orbit Stage", "Park Stage", 
+        "Robot Stage", "Silent Disco", "Minimax"
+    ];
+    
+    const GRID_END_HOUR = 24;
+    const PIXELS_PER_MIN = 4;
+
+    // Consolidated Data
+    const rawData = [
+        {d: "Fri", s: "Harbourflap Stage", a: "Panther Chan 陳蕾", t: "18:20-19:15"},
+        {d: "Fri", s: "Harbourflap Stage", a: "Jacob Collier", t: "20:00-21:00"},
+        {d: "Fri", s: "Harbourflap Stage", a: "Vaundy", t: "21:45-22:45"},
+        {d: "Fri", s: "Orbit Stage", a: "Moon Tang", t: "17:45-18:30"},
+        {d: "Fri", s: "Orbit Stage", a: "Passenger", t: "19:15-20:00"},
+        {d: "Fri", s: "Orbit Stage", a: "Sparks", t: "20:45-22:00"},
+        {d: "Fri", s: "Park Stage", a: "關勁松的 Astrology", t: "17:45-18:30"},
+        {d: "Fri", s: "Park Stage", a: "Wendy Wander 溫蒂漫步", t: "19:15-20:15"},
+        {d: "Fri", s: "Park Stage", a: "Digitalism (DJ Set)", t: "21:00-22:30"},
+        {d: "Fri", s: "Robot Stage", a: "MVSX (LIVE/DJ)", t: "17:00-18:00"},
+        {d: "Fri", s: "Robot Stage", a: "Andy-S and the Heman", t: "18:00-19:00"},
+        {d: "Fri", s: "Robot Stage", a: "Hugo Belloy", t: "19:00-20:00"},
+        {d: "Fri", s: "Robot Stage", a: "Golow", t: "20:00-21:00"},
+        {d: "Fri", s: "Robot Stage", a: "Azabu Punks", t: "21:00-22:30"},
+        {d: "Fri", s: "Silent Disco", a: "R&B Hours", t: "18:00-19:00"},
+        {d: "Fri", s: "Silent Disco", a: "Seiryū", t: "19:00-20:00"},
+        {d: "Fri", s: "Silent Disco", a: "Steffun", t: "20:00-21:00"},
+        {d: "Fri", s: "Silent Disco", a: "DJ Bobby Parsley", t: "21:00-22:00"},
+        {d: "Fri", s: "Silent Disco", a: "Gyro", t: "22:00-23:00"},
+        {d: "Fri", s: "Minimax", a: "Act 1", t: "17:40-18:20"},
+        {d: "Fri", s: "Minimax", a: "Act 2", t: "19:15-20:00"},
+        {d: "Fri", s: "Minimax", a: "Act 3", t: "21:00-21:45"},
+        {d: "Sat", s: "Harbourflap Stage", a: "JFFT X BILLY CHOI X KI CHAN", t: "13:30-14:15"},
+        {d: "Sat", s: "Harbourflap Stage", a: "ROBOT SWING", t: "15:00-15:45"},
+        {d: "Sat", s: "Harbourflap Stage", a: "KENTO NAKAJIMA 中島健人", t: "16:30-17:15"},
+        {d: "Sat", s: "Harbourflap Stage", a: "L'IMPÉRATRICE", t: "18:00-19:00"},
+        {d: "Sat", s: "Harbourflap Stage", a: "RICH BRIAN", t: "20:00-21:00"},
+        {d: "Sat", s: "Harbourflap Stage", a: "BLOC PARTY", t: "21:40-22:55"},
+        {d: "Sat", s: "Orbit Stage", a: "LAI YING 麗英", t: "14:30-15:15"},
+        {d: "Sat", s: "Orbit Stage", a: "PHUM VIPHURIT", t: "16:00-16:45"},
+        {d: "Sat", s: "Orbit Stage", a: "CHILLI BEANS.", t: "17:30-18:15"},
+        {d: "Sat", s: "Orbit Stage", a: "BETH GIBBONS", t: "19:00-20:00"},
+        {d: "Sat", s: "Orbit Stage", a: "ANO", t: "21:00-21:45"},
+        {d: "Sat", s: "Park Stage", a: "Y ROCK", t: "13:15-13:45"},
+        {d: "Sat", s: "Park Stage", a: "BEFORE THE NIGHT ENDS", t: "14:15-14:45"},
+        {d: "Sat", s: "Park Stage", a: "AKASAKI", t: "15:30-16:15"},
+        {d: "Sat", s: "Park Stage", a: "SOCCER MOMMY", t: "17:00-17:45"},
+        {d: "Sat", s: "Park Stage", a: "RIKON 離婚伝説", t: "18:30-19:15"},
+        {d: "Sat", s: "Park Stage", a: "BOLIS PUPUL", t: "20:00-21:00"},
+        {d: "Sat", s: "Park Stage", a: "DAVE CLARKE", t: "21:15-22:45"},
+        {d: "Sat", s: "Robot Stage", a: "A-MARC", t: "17:00-18:00"},
+        {d: "Sat", s: "Robot Stage", a: "KATAGYAL", t: "18:00-19:00"},
+        {d: "Sat", s: "Robot Stage", a: "UMAMI TAKEOVER", t: "19:00-20:00"},
+        {d: "Sat", s: "Robot Stage", a: "0159", t: "20:00-21:00"},
+        {d: "Sat", s: "Robot Stage", a: "DISTRIKT", t: "21:00-22:30"},
+        {d: "Sat", s: "Silent Disco", a: "MASABI", t: "14:00-15:00"},
+        {d: "Sat", s: "Silent Disco", a: "DLULU", t: "15:00-16:00"},
+        {d: "Sat", s: "Silent Disco", a: "YUEN CHI CHUNG", t: "16:00-17:00"},
+        {d: "Sat", s: "Silent Disco", a: "TIGA", t: "17:00-18:00"},
+        {d: "Sat", s: "Silent Disco", a: "JOHNNY UTAH", t: "18:00-19:00"},
+        {d: "Sat", s: "Silent Disco", a: "DIAMOND", t: "19:00-20:00"},
+        {d: "Sat", s: "Silent Disco", a: "MARK T", t: "20:00-21:00"},
+        {d: "Sat", s: "Silent Disco", a: "BAD BAMBINO", t: "21:00-22:00"},
+        {d: "Sat", s: "Minimax", a: "ACT 1", t: "15:45-16:30"},
+        {d: "Sat", s: "Minimax", a: "ACT 2", t: "17:15-18:00"},
+        {d: "Sat", s: "Minimax", a: "ACT 3", t: "19:00-20:00"},
+        {d: "Sun", s: "Harbourflap Stage", a: "ULTRA LOUNGE", t: "13:15-14:15"},
+        {d: "Sun", s: "Harbourflap Stage", a: "JACE 陳凱詠", t: "15:15-16:00"},
+        {d: "Sun", s: "Harbourflap Stage", a: "JEREMY ZUCKER", t: "16:45-17:30"},
+        {d: "Sun", s: "Harbourflap Stage", a: "FRANZ FERDINAND", t: "18:15-19:15"},
+        {d: "Sun", s: "Harbourflap Stage", a: "JUD 陳泳希", t: "19:55-20:15"},
+        {d: "Sun", s: "Harbourflap Stage", a: "YOGA LIN 林宥嘉", t: "20:15-21:00"},
+        {d: "Sun", s: "Harbourflap Stage", a: "MY BLOODY VALENTINE", t: "21:45-22:45"},
+        {d: "Sun", s: "Orbit Stage", a: "ANDR", t: "14:30-15:15"},
+        {d: "Sun", s: "Orbit Stage", a: "MARCIN", t: "16:00-16:45"},
+        {d: "Sun", s: "Orbit Stage", a: "TV GIRL", t: "17:30-18:15"},
+        {d: "Sun", s: "Orbit Stage", a: "GODSPEED YOU!", t: "19:15-20:15"},
+        {d: "Sun", s: "Orbit Stage", a: "ELLEGARDEN", t: "21:00-22:00"},
+        {d: "Sun", s: "Park Stage", a: "ERIC'S WEEKEND 小明的假日週末", t: "13:30-14:00"},
+        {d: "Sun", s: "Park Stage", a: "PUULUUP", t: "14:45-15:30"},
+        {d: "Sun", s: "Park Stage", a: "BRIGHT EYES", t: "16:30-17:15"},
+        {d: "Sun", s: "Park Stage", a: "M4GANG 摩四青年 WITH FAMA 農夫", t: "18:00-19:10"},
+        {d: "Sun", s: "Park Stage", a: "RIRIA", t: "19:30-21:00"},
+        {d: "Sun", s: "Park Stage", a: "SPECIAL REQUEST", t: "21:00-22:30"},
+        {d: "Sun", s: "Robot Stage", a: "ELEKTRO MÜLL", t: "17:00-17:45"},
+        {d: "Sun", s: "Robot Stage", a: "RSD", t: "18:00-19:30"},
+        {d: "Sun", s: "Robot Stage", a: "WENDY WENN", t: "19:30-20:30"},
+        {d: "Sun", s: "Robot Stage", a: "MEAN GURLS CLUB", t: "20:30-21:30"},
+        {d: "Sun", s: "Silent Disco", a: "RICHIE", t: "14:00-15:00"},
+        {d: "Sun", s: "Silent Disco", a: "ROGUE MOTION", t: "17:00-18:00"},
+        {d: "Sun", s: "Silent Disco", a: "WONG CHI CHUNG", t: "18:00-19:00"},
+        {d: "Sun", s: "Silent Disco", a: "CHARLIEWO", t: "20:00-21:00"},
+        {d: "Sun", s: "Minimax", a: "ACT 1", t: "16:00-16:45"},
+        {d: "Sun", s: "Minimax", a: "ACT 2", t: "17:30-18:15"},
+        {d: "Sun", s: "Minimax", a: "ACT 3", t: "19:15-19:55"},
+    ];
+
+    // --- STATE ---
+    let currentDay = "Fri";
+    let demoMode = true;
+    // Wishlist Set (Stores IDs like "Fri-ArtistName")
+    let wishlist = new Set(JSON.parse(localStorage.getItem('clockenflapWishlist')) || []);
+    let selectedArtistId = null;
+
+    // --- UTILS ---
+    function getGridStartHour(day) {
+        return day === 'Fri' ? 17 : 13;
+    }
+
+    function parseTime(tStr) {
+        const [h, m] = tStr.split(':').map(Number);
+        return h * 60 + m;
+    }
+
+    function getStartEndMins(timeRangeStr) {
+        const [start, end] = timeRangeStr.split('-').map(s => s.trim());
+        return {
+            start: parseTime(start),
+            end: parseTime(end)
+        };
+    }
+
+    function getStageClass(stageName) {
+        if(stageName.includes("Harbourflap")) return "stage-Harbourflap";
+        if(stageName.includes("Orbit")) return "stage-Orbit";
+        if(stageName.includes("Park")) return "stage-Park";
+        if(stageName.includes("Robot")) return "stage-Robot";
+        if(stageName.includes("Silent")) return "stage-Silent";
+        if(stageName.includes("Minimax")) return "stage-Minimax";
+        return "";
+    }
+
+    function createId(item) {
+        return `${item.d}-${item.a}`;
+    }
+
+    // --- CORE RENDER ---
+    function renderSchedule(day) {
+        const container = document.getElementById('schedule-container');
+        
+        if (wishlist.size > 0) {
+            container.classList.add('has-wishlist');
+        } else {
+            container.classList.remove('has-wishlist');
+        }
+
+        container.innerHTML = ''; 
+
+        const startHour = getGridStartHour(day);
+
+        // 1. Header Row
+        const corner = document.createElement('div');
+        corner.className = 'time-header-corner';
+        container.appendChild(corner);
+
+        STAGES.forEach((stage, index) => {
+            const div = document.createElement('div');
+            div.className = 'stage-header';
+            div.textContent = stage.replace(' Stage', '').replace('Powered by Carlsberg', '');
+            div.style.gridColumn = index + 2; 
+            div.style.gridRow = 1;
+            container.appendChild(div);
+        });
+
+        // 2. Time Axis & Grid
+        const totalDurationMins = (GRID_END_HOUR - startHour) * 60;
+        const intervals = totalDurationMins / 5; 
+        container.style.gridTemplateRows = `${50}px repeat(${intervals}, ${5 * PIXELS_PER_MIN}px)`;
+
+        for(let h = startHour; h < GRID_END_HOUR; h++) {
+            [0, 30].forEach(m => {
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'time-slot';
+                timeDiv.innerHTML = `<span>${h}:${m.toString().padStart(2, '0')}</span>`;
+                
+                const startMin = (h * 60 + m) - (startHour * 60);
+                const rowStart = Math.floor(startMin / 5) + 2; 
+                
+                timeDiv.style.gridColumn = 1;
+                timeDiv.style.gridRow = `${rowStart} / span 6`; 
+                container.appendChild(timeDiv);
+
+                const line = document.createElement('div');
+                line.className = 'grid-line';
+                line.style.gridRow = rowStart;
+                container.appendChild(line);
+            });
+        }
+
+        // 3. Artists
+        const dayData = rawData.filter(item => item.d === day);
+        
+        dayData.forEach(item => {
+            const {start, end} = getStartEndMins(item.t);
+            const startOffset = start - (startHour * 60);
+            const duration = end - start;
+            if (startOffset < 0) return;
+
+            const rowStart = Math.floor(startOffset / 5) + 2;
+            const span = Math.ceil(duration / 5);
+            const colIndex = STAGES.indexOf(item.s) + 2;
+            const artistId = createId(item);
+
+            if(colIndex > 1) {
+                const div = document.createElement('div');
+                div.className = `artist-block ${getStageClass(item.s)}`;
+                
+                if (wishlist.has(artistId)) {
+                    div.classList.add('wishlisted');
+                }
+
+                div.style.gridColumn = colIndex;
+                div.style.gridRow = `${rowStart} / span ${span}`;
+                div.innerHTML = `<div class="artist-time">${item.t}</div>${item.a}`;
+                
+                // Click Event -> Open Modal
+                div.onclick = () => openModal(item, artistId);
+                
+                container.appendChild(div);
+            }
+        });
+    }
+
+    // --- MODAL LOGIC ---
+    function openModal(item, id) {
+        selectedArtistId = id;
+        
+        document.getElementById('m-artist').textContent = item.a;
+        document.getElementById('m-info').textContent = `${item.d} • ${item.s} • ${item.t}`;
+        
+        // Spotify Link (Search Query)
+        const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(item.a)}`;
+        document.getElementById('btn-spotify').href = spotifyLink;
+        
+        // Wishlist Button State
+        const wlBtn = document.getElementById('btn-wishlist');
+        if (wishlist.has(id)) {
+            wlBtn.textContent = "Remove from Wishlist ❌";
+            wlBtn.classList.add('remove');
+        } else {
+            wlBtn.textContent = "Add to Wishlist ❤️";
+            wlBtn.classList.remove('remove');
+        }
+
+        document.getElementById('modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+        selectedArtistId = null;
+    }
+
+    function toggleCurrentWishlist() {
+        if (!selectedArtistId) return;
+
+        if (wishlist.has(selectedArtistId)) {
+            wishlist.delete(selectedArtistId);
+        } else {
+            wishlist.add(selectedArtistId);
+        }
+
+        localStorage.setItem('clockenflapWishlist', JSON.stringify([...wishlist]));
+        renderSchedule(currentDay);
+        closeModal();
+    }
+    
+    function clearWishlist() {
+        if(confirm("Clear your wishlist?")) {
+            wishlist.clear();
+            localStorage.setItem('clockenflapWishlist', JSON.stringify([]));
+            renderSchedule(currentDay);
+        }
+    }
+
+    document.getElementById('modal').onclick = function(e) {
+        if(e.target === this) closeModal();
+    }
+
+
+    // --- TIME LINE & CONTROLS ---
+    function updateTimeLine() {
+        if (!demoMode) return;
+        const now = new Date();
+        let minutes = now.getHours() * 60 + now.getMinutes();
+        const startHour = getGridStartHour(currentDay);
+        const gridStartMins = startHour * 60;
+        const offset = minutes - gridStartMins;
+        const line = document.getElementById('current-time-line');
+        if (offset >= 0 && offset <= (GRID_END_HOUR - startHour) * 60) {
+            line.style.display = 'block';
+            line.style.top = (50 + offset * PIXELS_PER_MIN) + 'px';
+        } else {
+            line.style.display = 'none';
+        }
+    }
+
+    function switchDay(day) {
+        currentDay = day;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        renderSchedule(day);
+        document.getElementById('viewport').scrollTop = 0;
+        updateTimeLine(); 
+    }
+
+    function toggleDemoMode() {
+        demoMode = !demoMode;
+        updateTimeLine();
+        alert("Demo Mode: " + (demoMode ? "ON" : "OFF"));
+    }
+
+    // --- INIT ---
+    renderSchedule('Fri');
+    setInterval(updateTimeLine, 60000); 
+    updateTimeLine(); 
+
+</script>
+</body>
+</html>
