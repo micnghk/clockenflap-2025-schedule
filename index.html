@@ -12,7 +12,7 @@
     <title>Clockenflap 2025</title>
     <style>
         :root {
-            /* UPDATED: 75% of previous 140px */
+            /* 75% width of original 140px */
             --col-width: 105px; 
             --time-col-width: 50px;
             --header-height: 50px;
@@ -119,7 +119,7 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 11px; /* Slightly smaller font for narrower columns */
+            font-size: 11px; 
             background: var(--header-bg);
             border-bottom: 2px solid var(--border-color);
             border-right: 1px solid var(--border-color);
@@ -170,10 +170,10 @@
 
         /* --- ARTIST BLOCKS & WISHLIST LOGIC --- */
         .artist-block {
-            margin: 1px 2px; /* Reduced margin for tighter fit */
+            margin: 1px 2px; 
             border-radius: 4px;
             padding: 3px;
-            font-size: 10px; /* Slightly smaller font */
+            font-size: 10px;
             font-weight: 600;
             color: #222; 
             overflow: hidden;
@@ -251,7 +251,7 @@
             font-weight: bold;
         }
 
-        /* Controls */
+        /* Controls - Only Wishlist Reset remains */
         .controls {
             position: fixed;
             bottom: 20px;
@@ -265,7 +265,7 @@
             background: rgba(0, 0, 0, 0.7);
             color: white;
             border: none;
-            padding: 8px 12px;
+            padding: 10px 15px;
             border-radius: 25px;
             font-size: 11px;
             cursor: pointer;
@@ -361,7 +361,6 @@
     </div>
 
     <div class="controls">
-        <button onclick="toggleDemoMode()">Toggle "NOW"</button>
         <button onclick="clearWishlist()">Reset Wishlist</button>
     </div>
 
@@ -390,7 +389,7 @@
     ];
     
     const GRID_END_HOUR = 24;
-    // UPDATED: Half height (2 pixels per minute instead of 4)
+    // Half height (2 pixels per minute instead of 4)
     const PIXELS_PER_MIN = 2;
 
     // Consolidated Data
@@ -484,7 +483,6 @@
 
     // --- STATE ---
     let currentDay = "Fri";
-    let demoMode = true;
     let wishlist = new Set(JSON.parse(localStorage.getItem('clockenflapWishlist')) || []);
     let selectedArtistId = null;
 
@@ -613,7 +611,6 @@
         document.getElementById('m-artist').textContent = item.a;
         document.getElementById('m-info').textContent = `${item.d} • ${item.s} • ${item.t}`;
         
-        // UPDATED: Correct Spotify Search Link
         const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(item.a)}`;
         document.getElementById('btn-spotify').href = spotifyLink;
         
@@ -663,13 +660,15 @@
 
     // --- TIME LINE & CONTROLS ---
     function updateTimeLine() {
-        if (!demoMode) return;
+        // "Demo Mode" logic is now the default logic.
+        // It simply shows the line based on the current HH:MM of the device.
         const now = new Date();
         let minutes = now.getHours() * 60 + now.getMinutes();
         const startHour = getGridStartHour(currentDay);
         const gridStartMins = startHour * 60;
         const offset = minutes - gridStartMins;
         const line = document.getElementById('current-time-line');
+        
         if (offset >= 0 && offset <= (GRID_END_HOUR - startHour) * 60) {
             line.style.display = 'block';
             line.style.top = (50 + offset * PIXELS_PER_MIN) + 'px';
@@ -685,12 +684,6 @@
         renderSchedule(day);
         document.getElementById('viewport').scrollTop = 0;
         updateTimeLine(); 
-    }
-
-    function toggleDemoMode() {
-        demoMode = !demoMode;
-        updateTimeLine();
-        alert("Demo Mode: " + (demoMode ? "ON" : "OFF"));
     }
 
     // --- INIT ---
