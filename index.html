@@ -7,12 +7,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#000000">
-    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/600px-Octicons-mark-github.svg.png"> <title>Clockenflap 2025</title>
+    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/600px-Octicons-mark-github.svg.png">
+
+    <title>Clockenflap 2025</title>
     <style>
         :root {
-            --col-width: 140px;
+            /* UPDATED: 75% of previous 140px */
+            --col-width: 105px; 
             --time-col-width: 50px;
-            --row-height: 4px;
             --header-height: 50px;
             
             /* Light Mode Defaults */
@@ -59,7 +61,6 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
-            /* Prevent pull-to-refresh on mobile to feel more app-like */
             overscroll-behavior: none;
         }
 
@@ -70,7 +71,7 @@
             color: var(--tab-text);
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 100;
-            padding-top: env(safe-area-inset-top); /* Handle iPhone Notch */
+            padding-top: env(safe-area-inset-top);
         }
         .tab {
             flex: 1;
@@ -104,7 +105,7 @@
             grid-template-columns: var(--time-col-width) repeat(6, var(--col-width));
             position: relative;
             min-width: fit-content;
-            padding-bottom: 80px; /* Extra padding for controls */
+            padding-bottom: 80px;
             background: var(--card-bg);
             transition: 0.3s;
         }
@@ -118,14 +119,16 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11px; /* Slightly smaller font for narrower columns */
             background: var(--header-bg);
             border-bottom: 2px solid var(--border-color);
             border-right: 1px solid var(--border-color);
             z-index: 20;
             text-align: center;
-            padding: 0 5px;
+            padding: 0 2px;
             color: var(--text-main);
+            word-wrap: break-word;
+            line-height: 1.2;
         }
         
         .time-header-corner {
@@ -153,7 +156,7 @@
             display: flex;
             flex-direction: column;
             justify-content: start;
-            padding-top: 5px;
+            padding-top: 2px;
         }
         .time-slot span {
             transform: translateY(-50%);
@@ -167,10 +170,10 @@
 
         /* --- ARTIST BLOCKS & WISHLIST LOGIC --- */
         .artist-block {
-            margin: 1px 4px;
+            margin: 1px 2px; /* Reduced margin for tighter fit */
             border-radius: 4px;
-            padding: 4px;
-            font-size: 11px;
+            padding: 3px;
+            font-size: 10px; /* Slightly smaller font */
             font-weight: 600;
             color: #222; 
             overflow: hidden;
@@ -183,6 +186,7 @@
             z-index: 1;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            line-height: 1.2;
         }
         .artist-block:active {
             transform: scale(0.98);
@@ -203,15 +207,15 @@
         .artist-block.wishlisted::after {
             content: "❤️";
             position: absolute;
-            top: 2px;
-            right: 2px;
-            font-size: 10px;
+            top: 1px;
+            right: 1px;
+            font-size: 8px;
         }
 
         .artist-time {
-            font-size: 9px;
+            font-size: 8px;
             opacity: 0.8;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
             font-weight: normal;
         }
 
@@ -237,12 +241,12 @@
         #current-time-line::before {
             content: "NOW";
             position: absolute;
-            left: -45px;
-            top: -8px;
+            left: -35px;
+            top: -7px;
             background: #ff3b30;
             color: white;
-            font-size: 9px;
-            padding: 2px 4px;
+            font-size: 8px;
+            padding: 1px 3px;
             border-radius: 2px;
             font-weight: bold;
         }
@@ -261,7 +265,7 @@
             background: rgba(0, 0, 0, 0.7);
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-radius: 25px;
             font-size: 11px;
             cursor: pointer;
@@ -386,7 +390,8 @@
     ];
     
     const GRID_END_HOUR = 24;
-    const PIXELS_PER_MIN = 4;
+    // UPDATED: Half height (2 pixels per minute instead of 4)
+    const PIXELS_PER_MIN = 2;
 
     // Consolidated Data
     const rawData = [
@@ -480,7 +485,6 @@
     // --- STATE ---
     let currentDay = "Fri";
     let demoMode = true;
-    // Wishlist Set (Stores IDs like "Fri-ArtistName")
     let wishlist = new Set(JSON.parse(localStorage.getItem('clockenflapWishlist')) || []);
     let selectedArtistId = null;
 
@@ -595,7 +599,6 @@
                 div.style.gridRow = `${rowStart} / span ${span}`;
                 div.innerHTML = `<div class="artist-time">${item.t}</div>${item.a}`;
                 
-                // Click Event -> Open Modal
                 div.onclick = () => openModal(item, artistId);
                 
                 container.appendChild(div);
@@ -610,11 +613,10 @@
         document.getElementById('m-artist').textContent = item.a;
         document.getElementById('m-info').textContent = `${item.d} • ${item.s} • ${item.t}`;
         
-        // Spotify Link (Search Query)
+        // UPDATED: Correct Spotify Search Link
         const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(item.a)}`;
         document.getElementById('btn-spotify').href = spotifyLink;
         
-        // Wishlist Button State
         const wlBtn = document.getElementById('btn-wishlist');
         if (wishlist.has(id)) {
             wlBtn.textContent = "Remove from Wishlist ❌";
