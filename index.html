@@ -64,20 +64,19 @@
             overscroll-behavior: none;
         }
 
-        /* UPDATED: Logo Header */
+        /* Brand Header */
         .brand-header {
             background-color: #000000;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 12px 0;
-            /* Handle iPhone Notch Safe Area here */
             padding-top: max(12px, env(safe-area-inset-top)); 
             z-index: 110;
         }
         
         .brand-logo {
-            height: 30px; /* Adjust size */
+            height: 30px; 
             width: auto;
             display: block;
         }
@@ -89,7 +88,6 @@
             color: var(--tab-text);
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             z-index: 100;
-            /* Removed safe-area padding here since header handles it */
         }
         .tab {
             flex: 1;
@@ -186,7 +184,7 @@
             pointer-events: none;
         }
 
-        /* --- ARTIST BLOCKS & WISHLIST LOGIC --- */
+        /* --- ARTIST BLOCKS --- */
         .artist-block {
             margin: 1px 2px; 
             border-radius: 4px;
@@ -321,6 +319,22 @@
             from { transform: scale(0.9); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        
+        /* Modal Image */
+        .modal-img-container {
+            width: 100%;
+            height: 180px;
+            overflow: hidden;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none; /* Hidden by default if no image */
+        }
+        .modal-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         .modal-title {
             font-size: 20px;
             font-weight: bold;
@@ -393,6 +407,11 @@
     <div class="modal-overlay" id="modal">
         <div class="modal-box">
             <button class="btn-close" onclick="closeModal()">×</button>
+            
+            <div class="modal-img-container" id="m-img-container">
+                <img src="" alt="Artist" class="modal-img" id="m-img">
+            </div>
+
             <div class="modal-title" id="m-artist">Artist Name</div>
             <div class="modal-info" id="m-info">Stage • Time</div>
             
@@ -417,53 +436,59 @@
     const GRID_END_HOUR = 24;
     const PIXELS_PER_MIN = 2;
 
-    // Consolidated Data
+    // UPDATED Data with Official Names & Regions
     const rawData = [
-        {d: "Fri", s: "Harbourflap Stage", a: "Panther Chan 陳蕾", t: "18:20-19:15"},
-        {d: "Fri", s: "Harbourflap Stage", a: "Jacob Collier", t: "20:00-21:00"},
-        {d: "Fri", s: "Harbourflap Stage", a: "Vaundy", t: "21:45-22:45"},
-        {d: "Fri", s: "Orbit Stage", a: "Moon Tang", t: "17:45-18:30"},
-        {d: "Fri", s: "Orbit Stage", a: "Passenger", t: "19:15-20:00"},
-        {d: "Fri", s: "Orbit Stage", a: "Sparks", t: "20:45-22:00"},
-        {d: "Fri", s: "Park Stage", a: "關勁松的 Astrology", t: "17:45-18:30"},
-        {d: "Fri", s: "Park Stage", a: "Wendy Wander 溫蒂漫步", t: "19:15-20:15"},
-        {d: "Fri", s: "Park Stage", a: "Digitalism (DJ Set)", t: "21:00-22:30"},
-        {d: "Fri", s: "Robot Stage", a: "MVSX (LIVE/DJ)", t: "17:00-18:00"},
-        {d: "Fri", s: "Robot Stage", a: "Andy-S and the Heman", t: "18:00-19:00"},
-        {d: "Fri", s: "Robot Stage", a: "Hugo Belloy", t: "19:00-20:00"},
-        {d: "Fri", s: "Robot Stage", a: "Golow", t: "20:00-21:00"},
-        {d: "Fri", s: "Robot Stage", a: "Azabu Punks", t: "21:00-22:30"},
-        {d: "Fri", s: "Silent Disco", a: "R&B Hours", t: "18:00-19:00"},
-        {d: "Fri", s: "Silent Disco", a: "Seiryū", t: "19:00-20:00"},
-        {d: "Fri", s: "Silent Disco", a: "Steffun", t: "20:00-21:00"},
-        {d: "Fri", s: "Silent Disco", a: "DJ Bobby Parsley", t: "21:00-22:00"},
-        {d: "Fri", s: "Silent Disco", a: "Gyro", t: "22:00-23:00"},
-        {d: "Fri", s: "Minimax", a: "Act 1", t: "17:40-18:20"},
-        {d: "Fri", s: "Minimax", a: "Act 2", t: "19:15-20:00"},
-        {d: "Fri", s: "Minimax", a: "Act 3", t: "21:00-21:45"},
-        {d: "Sat", s: "Harbourflap Stage", a: "JFFT X BILLY CHOI X KI CHAN", t: "13:30-14:15"},
-        {d: "Sat", s: "Harbourflap Stage", a: "ROBOT SWING", t: "15:00-15:45"},
-        {d: "Sat", s: "Harbourflap Stage", a: "KENTO NAKAJIMA 中島健人", t: "16:30-17:15"},
-        {d: "Sat", s: "Harbourflap Stage", a: "L'IMPÉRATRICE", t: "18:00-19:00"},
-        {d: "Sat", s: "Harbourflap Stage", a: "RICH BRIAN", t: "20:00-21:00"},
-        {d: "Sat", s: "Harbourflap Stage", a: "BLOC PARTY", t: "21:40-22:55"},
-        {d: "Sat", s: "Orbit Stage", a: "LAI YING 麗英", t: "14:30-15:15"},
-        {d: "Sat", s: "Orbit Stage", a: "PHUM VIPHURIT", t: "16:00-16:45"},
-        {d: "Sat", s: "Orbit Stage", a: "CHILLI BEANS.", t: "17:30-18:15"},
-        {d: "Sat", s: "Orbit Stage", a: "BETH GIBBONS", t: "19:00-20:00"},
-        {d: "Sat", s: "Orbit Stage", a: "ANO", t: "21:00-21:45"},
-        {d: "Sat", s: "Park Stage", a: "Y ROCK", t: "13:15-13:45"},
-        {d: "Sat", s: "Park Stage", a: "BEFORE THE NIGHT ENDS", t: "14:15-14:45"},
-        {d: "Sat", s: "Park Stage", a: "AKASAKI", t: "15:30-16:15"},
-        {d: "Sat", s: "Park Stage", a: "SOCCER MOMMY", t: "17:00-17:45"},
-        {d: "Sat", s: "Park Stage", a: "RIKON 離婚伝説", t: "18:30-19:15"},
-        {d: "Sat", s: "Park Stage", a: "BOLIS PUPUL", t: "20:00-21:00"},
-        {d: "Sat", s: "Park Stage", a: "DAVE CLARKE", t: "21:15-22:45"},
-        {d: "Sat", s: "Robot Stage", a: "A-MARC", t: "17:00-18:00"},
-        {d: "Sat", s: "Robot Stage", a: "KATAGYAL", t: "18:00-19:00"},
-        {d: "Sat", s: "Robot Stage", a: "UMAMI TAKEOVER", t: "19:00-20:00"},
-        {d: "Sat", s: "Robot Stage", a: "0159", t: "20:00-21:00"},
-        {d: "Sat", s: "Robot Stage", a: "DISTRIKT", t: "21:00-22:30"},
+        // FRIDAY
+        {d: "Fri", s: "Harbourflap Stage", a: "PANTHER CHAN 陳蕾 (HK)", t: "18:20-19:15"},
+        {d: "Fri", s: "Harbourflap Stage", a: "JACOB COLLIER (UK)", t: "20:00-21:00"},
+        {d: "Fri", s: "Harbourflap Stage", a: "VAUNDY (JP)", t: "21:45-22:45"},
+        {d: "Fri", s: "Orbit Stage", a: "MOON TANG (HK)", t: "17:45-18:30"},
+        {d: "Fri", s: "Orbit Stage", a: "PASSENGER (UK)", t: "19:15-20:00"},
+        {d: "Fri", s: "Orbit Stage", a: "SPARKS (US)", t: "20:45-22:00"},
+        {d: "Fri", s: "Park Stage", a: "關勁松的 ASTROLOGY (HK)", t: "17:45-18:30"},
+        {d: "Fri", s: "Park Stage", a: "WENDY WANDER (TW)", t: "19:15-20:15"},
+        {d: "Fri", s: "Park Stage", a: "DIGITALISM DJ SET (DE)", t: "21:00-22:30"},
+        {d: "Fri", s: "Robot Stage", a: "MVSX (LIVE/DJ) (HK)", t: "17:00-18:00"},
+        {d: "Fri", s: "Robot Stage", a: "ANDY-S & THE HEMAN (REACH4LUV) (HK)", t: "18:00-19:00"},
+        {d: "Fri", s: "Robot Stage", a: "HUGO BELLOY (HK)", t: "19:00-20:00"},
+        {d: "Fri", s: "Robot Stage", a: "GOLOW (HK)", t: "20:00-21:00"},
+        {d: "Fri", s: "Robot Stage", a: "AZABU PUNKS (JP/HK)", t: "21:00-22:30"},
+        {d: "Fri", s: "Silent Disco", a: "R&B HOURS", t: "18:00-19:00"},
+        {d: "Fri", s: "Silent Disco", a: "SEIRYŪ", t: "19:00-20:00"},
+        {d: "Fri", s: "Silent Disco", a: "STEFFUN", t: "20:00-21:00"},
+        {d: "Fri", s: "Silent Disco", a: "DJ BOBBY PARSLEY", t: "21:00-22:00"},
+        {d: "Fri", s: "Silent Disco", a: "GYRO", t: "22:00-23:00"},
+        {d: "Fri", s: "Minimax", a: "ACT 1", t: "17:40-18:20"},
+        {d: "Fri", s: "Minimax", a: "ACT 2", t: "19:15-20:00"},
+        {d: "Fri", s: "Minimax", a: "ACT 3", t: "21:00-21:45"},
+
+        // SATURDAY
+        {d: "Sat", s: "Harbourflap Stage", a: "JFFT X BILLY CHOI X KI CHAN (HK)", t: "13:30-14:15"},
+        {d: "Sat", s: "Harbourflap Stage", a: "ROBOT SWING (TW)", t: "15:00-15:45"},
+        {d: "Sat", s: "Harbourflap Stage", a: "KENTO NAKAJIMA 中島健人 (JP)", t: "16:30-17:15"},
+        {d: "Sat", s: "Harbourflap Stage", a: "L'IMPÉRATRICE (FR)", t: "18:00-19:00"},
+        {d: "Sat", s: "Harbourflap Stage", a: "RICH BRIAN (ID)", t: "20:00-21:00"},
+        {d: "Sat", s: "Harbourflap Stage", a: "BLOC PARTY (UK)", t: "21:40-22:55"},
+        
+        // CORRECTION: Lai Ying
+        {d: "Sat", s: "Orbit Stage", a: "LAI YING 麗英 X FOUNTAIN DE CHOPIN (HK)", t: "14:30-15:15"},
+        {d: "Sat", s: "Orbit Stage", a: "PHUM VIPHURIT (TH)", t: "16:00-16:45"},
+        {d: "Sat", s: "Orbit Stage", a: "CHILLI BEANS. (JP)", t: "17:30-18:15"},
+        {d: "Sat", s: "Orbit Stage", a: "BETH GIBBONS (UK)", t: "19:00-20:00"},
+        {d: "Sat", s: "Orbit Stage", a: "ANO (JP)", t: "21:00-21:45"},
+        
+        {d: "Sat", s: "Park Stage", a: "YROCK (HK)", t: "13:15-13:45"},
+        {d: "Sat", s: "Park Stage", a: "BEFORE THE NIGHT ENDS (HK)", t: "14:15-14:45"},
+        {d: "Sat", s: "Park Stage", a: "AKASAKI (JP)", t: "15:30-16:15"},
+        {d: "Sat", s: "Park Stage", a: "SOCCER MOMMY (US)", t: "17:00-17:45"},
+        {d: "Sat", s: "Park Stage", a: "RIKON 離婚伝説 (JP)", t: "18:30-19:15"},
+        {d: "Sat", s: "Park Stage", a: "BOLIS PUPUL (BE)", t: "20:00-21:00"},
+        {d: "Sat", s: "Park Stage", a: "DAVE CLARKE (UK)", t: "21:15-22:45"},
+        {d: "Sat", s: "Robot Stage", a: "A-AMARC (HK)", t: "17:00-18:00"},
+        {d: "Sat", s: "Robot Stage", a: "KATAGYAL (HK)", t: "18:00-19:00"},
+        {d: "Sat", s: "Robot Stage", a: "UMAMI TAKEOVER (HK)", t: "19:00-20:00"},
+        {d: "Sat", s: "Robot Stage", a: "0159 (HK)", t: "20:00-21:00"},
+        {d: "Sat", s: "Robot Stage", a: "DISTRIKT (Faxtory, Jordy Lee, Scott B) (HK)", t: "21:00-22:30"},
         {d: "Sat", s: "Silent Disco", a: "MASABI", t: "14:00-15:00"},
         {d: "Sat", s: "Silent Disco", a: "DLULU", t: "15:00-16:00"},
         {d: "Sat", s: "Silent Disco", a: "YUEN CHI CHUNG", t: "16:00-17:00"},
@@ -475,28 +500,33 @@
         {d: "Sat", s: "Minimax", a: "ACT 1", t: "15:45-16:30"},
         {d: "Sat", s: "Minimax", a: "ACT 2", t: "17:15-18:00"},
         {d: "Sat", s: "Minimax", a: "ACT 3", t: "19:00-20:00"},
-        {d: "Sun", s: "Harbourflap Stage", a: "ULTRA LOUNGE", t: "13:15-14:15"},
-        {d: "Sun", s: "Harbourflap Stage", a: "JACE 陳凱詠", t: "15:15-16:00"},
-        {d: "Sun", s: "Harbourflap Stage", a: "JEREMY ZUCKER", t: "16:45-17:30"},
-        {d: "Sun", s: "Harbourflap Stage", a: "FRANZ FERDINAND", t: "18:15-19:15"},
+
+        // SUNDAY
+        {d: "Sun", s: "Harbourflap Stage", a: "ULTRA LOUNGE - DJ KULU TRIBUTE (HK)", t: "13:15-14:15"},
+        {d: "Sun", s: "Harbourflap Stage", a: "JACE 陳凱詠 (HK)", t: "15:15-16:00"},
+        {d: "Sun", s: "Harbourflap Stage", a: "JEREMY ZUCKER (US)", t: "16:45-17:30"},
+        {d: "Sun", s: "Harbourflap Stage", a: "FRANZ FERDINAND (UK)", t: "18:15-19:15"},
         {d: "Sun", s: "Harbourflap Stage", a: "JUD 陳泳希", t: "19:55-20:15"},
-        {d: "Sun", s: "Harbourflap Stage", a: "YOGA LIN 林宥嘉", t: "20:15-21:00"},
-        {d: "Sun", s: "Harbourflap Stage", a: "MY BLOODY VALENTINE", t: "21:45-22:45"},
-        {d: "Sun", s: "Orbit Stage", a: "ANDR", t: "14:30-15:15"},
-        {d: "Sun", s: "Orbit Stage", a: "MARCIN", t: "16:00-16:45"},
-        {d: "Sun", s: "Orbit Stage", a: "TV GIRL", t: "17:30-18:15"},
-        {d: "Sun", s: "Orbit Stage", a: "Godspeed You! Black Emperor", t: "19:15-20:15"},
-        {d: "Sun", s: "Orbit Stage", a: "ELLEGARDEN", t: "21:00-22:00"},
+        {d: "Sun", s: "Harbourflap Stage", a: "YOGA LIN 林宥嘉 (TW)", t: "20:15-21:00"},
+        {d: "Sun", s: "Harbourflap Stage", a: "MY BLOODY VALENTINE (UK)", t: "21:45-22:45"},
+        {d: "Sun", s: "Orbit Stage", a: "ANDR (TW)", t: "14:30-15:15"},
+        {d: "Sun", s: "Orbit Stage", a: "MARCIN (PL)", t: "16:00-16:45"},
+        {d: "Sun", s: "Orbit Stage", a: "TV GIRL (US)", t: "17:30-18:15"},
+        
+        // CORRECTION: Godspeed You! Black Emperor
+        {d: "Sun", s: "Orbit Stage", a: "GODSPEED YOU! BLACK EMPEROR (CA)", t: "19:15-20:15"},
+        {d: "Sun", s: "Orbit Stage", a: "ELLEGARDEN (JP)", t: "21:00-22:00"},
+        
         {d: "Sun", s: "Park Stage", a: "ERIC'S WEEKEND 小明的假日週末", t: "13:30-14:00"},
-        {d: "Sun", s: "Park Stage", a: "PUULUUP", t: "14:45-15:30"},
-        {d: "Sun", s: "Park Stage", a: "BRIGHT EYES", t: "16:30-17:15"},
-        {d: "Sun", s: "Park Stage", a: "M4GANG 摩四青年 WITH FAMA 農夫", t: "18:00-19:10"},
-        {d: "Sun", s: "Park Stage", a: "RIRIA", t: "19:30-21:00"},
-        {d: "Sun", s: "Park Stage", a: "SPECIAL REQUEST", t: "21:00-22:30"},
-        {d: "Sun", s: "Robot Stage", a: "ELEKTRO MÜLL", t: "17:00-17:45"},
-        {d: "Sun", s: "Robot Stage", a: "RSD", t: "18:00-19:30"},
-        {d: "Sun", s: "Robot Stage", a: "WENDY WENN", t: "19:30-20:30"},
-        {d: "Sun", s: "Robot Stage", a: "MEAN GURLS CLUB", t: "20:30-21:30"},
+        {d: "Sun", s: "Park Stage", a: "PUULUUP (EE)", t: "14:45-15:30"},
+        {d: "Sun", s: "Park Stage", a: "BRIGHT EYES (US)", t: "16:30-17:15"},
+        {d: "Sun", s: "Park Stage", a: "M4GANG 摩四青年 WITH SPECIAL GUESTS FAMA 農夫", t: "18:00-19:10"},
+        {d: "Sun", s: "Park Stage", a: "RIRIA (UK)", t: "19:30-21:00"},
+        {d: "Sun", s: "Park Stage", a: "SPECIAL REQUEST (UK)", t: "21:00-22:30"},
+        {d: "Sun", s: "Robot Stage", a: "ELEKTRO MÜLL (HK)", t: "17:00-17:45"},
+        {d: "Sun", s: "Robot Stage", a: "RSD (UK)", t: "18:00-19:30"},
+        {d: "Sun", s: "Robot Stage", a: "WENDY WENN (HK)", t: "19:30-20:30"},
+        {d: "Sun", s: "Robot Stage", a: "MEAN GURLS CLUB (HK)", t: "20:30-21:30"},
         {d: "Sun", s: "Silent Disco", a: "RICHIE", t: "14:00-15:00"},
         {d: "Sun", s: "Silent Disco", a: "ROGUE MOTION", t: "17:00-18:00"},
         {d: "Sun", s: "Silent Disco", a: "WONG CHI CHUNG", t: "18:00-19:00"},
@@ -636,7 +666,20 @@
         document.getElementById('m-artist').textContent = item.a;
         document.getElementById('m-info').textContent = `${item.d} • ${item.s} • ${item.t}`;
         
-        const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(item.a)}`;
+        // Show image if it exists in data
+        const imgContainer = document.getElementById('m-img-container');
+        const imgEl = document.getElementById('m-img');
+        
+        if (item.img) {
+            imgEl.src = item.img;
+            imgContainer.style.display = 'block';
+        } else {
+            imgContainer.style.display = 'none';
+        }
+
+        // Clean artist name for Spotify search (remove parens region)
+        const cleanName = item.a.split('(')[0].trim();
+        const spotifyLink = `https://open.spotify.com/search/${encodeURIComponent(cleanName)}`;
         document.getElementById('btn-spotify').href = spotifyLink;
         
         const wlBtn = document.getElementById('btn-wishlist');
